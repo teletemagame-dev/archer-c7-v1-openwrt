@@ -1,0 +1,40 @@
+#!/bin/sh
+# First-boot initialization for TP-Link Archer C7 v1 (QCA9880-AR1A hw1.0)
+
+sysctl -w kernel.panic_on_oops=0 kernel.panic=0 >/dev/null 2>&1 || true
+
+/sbin/wifi config >/dev/null 2>&1 || true
+
+# Pre-configure 2.4 GHz and 5 GHz radio profiles (disabled until user enables in LuCI)
+for r in radio0 radio1; do
+    if uci -q get wireless.${r} >/dev/null; then
+        band=$(uci -q get wireless.${r}.band)
+        if [ "$band" = "5g" ]; then
+            uci set wireless.${r}.disabled='1'
+            uci set wireless.${r}.country='US'
+            uci set wireless.${r}.channel='36'
+            uci set wireless.${r}.htmode='VHT80'
+            uci set wireless.${r}.noscan='1'
+            uci set wireless.default_${r}.ssid='ArcherC7v1-5G'
+            uci set wireless.default_${r}.encryption='none'
+            uci set wireless.default_${r}.disabled='1'
+        else
+            uci set wireless.${r}.disabled='1'
+            uci set wireless.${r}.country='US'
+            uci set wireless.${r}.channel='1'
+            uci set wireless.${r}.htmode='HT20'
+            uci set wireless.${r}.noscan='1'
+            uci set wireless.default_${r}.ssid='ArcherC7v1-2G'
+            uci set wireless.default_${r}.encryption='none'
+            uci set wireless.default_${r}.disabled='1'
+        fi
+    fi
+done
+
+# Enable TCP MSS clamping and software flow offloading
+uci set firewall.@zone[1].mtu_fix='1'
+uci set firewall.@defaults[0].flow_offloading='1'
+
+uci commit wireless >/dev/null 2>&1 || true
+uci commit firewall >/dev/null 2>&1 || true
+exit 0
